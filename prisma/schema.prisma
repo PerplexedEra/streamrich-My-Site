@@ -1,0 +1,281 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+enum UserRole {
+  STREAMER
+  CREATOR
+  ADMIN
+}
+
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Authentication models (NextAuth)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model TwoFactorAuth {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  secret     String
+  isEnabled  Boolean  @default(false)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// User and Profile models
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   @db.Text
+  role          UserRole  @default(STREAMER)
+  accounts      Account[]
+  sessions      Session[]
+  profile         Profile?
+  twoFactorAuth   TwoFactorAuth?
+  contents        Content[]
+  transactions      Transaction[]
+  contentViews      ContentView[]
+  withdrawals       Withdrawal[]
+  productPurchases  ProductPurchase[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+model Profile {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  displayName   String?
+  bio           String?   @db.Text
+  avatar        String?
+  website       String?
+  socialLinks   Json?     // Store social media links as JSON
+  points        Int       @default(0)     // Points earned by streaming
+  totalEarned   Float     @default(0)     // Total earnings (in dollars)
+  availableCash Float     @default(0)     // Available balance for withdrawal
+  totalWithdrawn Float    @default(0)     // Total amount withdrawn
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Content and Engagement models
+model Content {
+  id            String        @id @default(cuid())
+  title         String
+  description   String?       @db.Text
+  url           String
+  thumbnail     String?
+  type          ContentType
+  duration      Int           // in seconds
+  platform      PlatformType  // e.g., 'youtube', 'spotify'
+  isPublic      Boolean       @default(true)
+  isFeatured    Boolean       @default(false)
+  isTopListed   Boolean       @default(false)
+  views         Int           @default(0)
+  likes         Int           @default(0)
+  pointsAwarded Int           @default(1)  // Points per view (30+ seconds)
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId        String?
+  plan          Plan?         @relation(fields: [planId], references: [id])
+  transactions  Transaction[]
+  contentViews  ContentView[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  expiresAt     DateTime?     // When the promotion expires
+}
+
+enum ContentType {
+  MUSIC
+  VIDEO
+  PODCAST
+}
+
+enum PlatformType {
+  YOUTUBE
+  SPOTIFY
+  SOUNDCLOUD
+  OTHER
+}
+
+// Payment and Transaction models
+model Plan {
+  id          String     @id @default(cuid())
+  name        String     // e.g., 'Basic', 'Featured', 'Premium'
+  description String
+  price       Float
+  duration    Int        // in days
+  features    String[]   // Array of feature strings
+  isActive    Boolean    @default(true)
+  contents    Content[]
+  transactions Transaction[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Transaction {
+  id          String    @id @default(cuid())
+  amount      Float
+  type        TransactionType
+  status      TransactionStatus  @default(PENDING)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  contentId   String?
+  content     Content?   @relation(fields: [contentId], references: [id])
+  planId      String?
+  plan        Plan?      @relation(fields: [planId], references: [id])
+  paymentId   String?    // External payment processor ID
+  metadata    Json?      // Additional payment metadata
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum TransactionType {
+  CONTENT_PROMOTION
+  WITHDRAWAL
+  REFUND
+  BONUS
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model ContentView {
+  id        String   @id @default(cuid())
+  contentId String
+  content   Content  @relation(fields: [contentId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  duration  Int      // in seconds
+  pointsEarned Int   @default(0)
+  viewedAt  DateTime @default(now())
+  
+  @@unique([contentId, userId])
+}
+
+model Withdrawal {
+  id          String    @id @default(cuid())
+  amount      Float
+  status      WithdrawalStatus @default(PENDING)
+  method      WithdrawalMethod
+  accountInfo Json      // Bank/PayPal details
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  processedAt DateTime?
+  processedBy String?   // Admin ID who processed the withdrawal
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+  FAILED
+}
+
+enum WithdrawalMethod {
+  BANK_TRANSFER
+  PAYPAL
+  CRYPTO
+  OTHER
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  name        String
+  description String    @db.Text
+  price       Float
+  imageUrl    String
+  fileUrl     String?   // URL to the product file
+  fileType    String?   // e.g., 'audio/mp3', 'application/zip'
+  fileSize    Int?      // File size in bytes
+  category    ProductCategory
+  inStock     Boolean   @default(true)
+  downloadCount Int     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  purchases   ProductPurchase[]
+}
+
+model ProductPurchase {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  status    PurchaseStatus @default(COMPLETED)
+  downloadKey String @unique // Secure key for download link
+  downloadCount Int  @default(0)
+  expiresAt  DateTime?      // When the download link expires
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([productId, userId])
+}
+
+enum ProductCategory {
+  BEATS
+  PRESETS
+  SOFTWARE
+  SAMPLE_PACK
+  MIDI
+  OTHER
+}
+
+enum PurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}

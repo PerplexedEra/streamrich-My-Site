@@ -1,0 +1,779 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { Icons } from '@/components/icons';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type FormData = {
+  name: string;
+  email: string;
+  bio: string;
+  displayName: string;
+};
+
+interface ProfileData {
+  id: string;
+  displayName: string;
+  bio: string;
+  avatar: string | null;
+  points: number;
+  totalEarned: number;
+  availableCash: number;
+  totalWithdrawn: number;
+  role: string;
+  name?: string;
+  email?: string;
+  image?: string | null;
+}
+
+export default function ProfilePage() {
+  const { data: session, update } = useSession();
+  const router = useRouter();
+  
+  // State management
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    email: '',
+    bio: '',
+    displayName: ''
+  });
+  
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+
+  // Fetch profile data
+  const fetchProfile = useCallback(async () => {
+    if (!session) {
+      router.push('/auth/signin');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/user/profile');
+      if (!response.ok) throw new Error('Failed to fetch profile');
+      
+      const data = await response.json();
+      setProfile(data);
+      
+      setFormData({
+        name: data.name || data.displayName || '',
+        email: data.email || session.user?.email || '',
+        bio: data.bio || '',
+        displayName: data.displayName || data.name || ''
+      });
+      
+      if (data.avatar) {
+        setPreviewUrl(data.avatar);
+      } else if (data.image) {
+        setPreviewUrl(data.image);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+      setError('Failed to load profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [session, router]);
+
+  useEffect(() => {
+    if (session) {
+      fetchProfile();
+    } else {
+      router.push('/auth/signin');
+    }
+  }, [session, fetchProfile]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session) return;
+    
+    try {
+      setIsSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('bio', formData.bio);
+      formDataToSend.append('displayName', formData.displayName);
+      
+      if (avatarFile) {
+        formDataToSend.append('avatar', avatarFile);
+      }
+
+      const response = await fetch('/api/user/profile', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
+      const updatedProfile = await response.json();
+      setProfile(updatedProfile);
+      setSuccess('Profile updated successfully!');
+      setIsEditing(false);
+      
+      // Update the session to reflect changes
+      if (update) {
+        await update({
+          ...session,
+          user: {
+            ...session.user,
+            name: formData.name || session.user?.name || '',
+            email: formData.email || session.user?.email || '',
+            image: updatedProfile.avatar || session.user?.image || null,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError('Failed to update profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+    if (!profile) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <p className="text-lg text-gray-600">Failed to load profile.</p>
+            <button
+              onClick={fetchProfile}
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex flex-col md:flex-row items-center mb-6">
+              <div className="w-32 h-32 rounded-full overflow-hidden mb-4 md:mb-0 md:mr-6">
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                    <Icons.user className="w-16 h-16 text-gray-400" />
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {isEditing ? 'Edit Profile' : 'My Profile'}
+              </h1>
+              {!isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90"
+                >
+                  Edit Profile
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Error/Success Messages */}
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mx-6 mt-4 rounded">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <Icons.alertCircle className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-50 border-l-4 border-green-500 p-4 mx-6 mt-4 rounded">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <Icons.checkCircle className="h-5 w-5 text-green-500" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-green-700">{success}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Profile Form */}
+          <form onSubmit={handleSubmit} className="p-6">
+            <div className="md:flex md:items-start md:space-x-8">
+              {/* Avatar Section */}
+              <div className="md:w-1/3 flex flex-col items-center">
+                <div className="relative">
+                  <div className="h-32 w-32 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                    {previewUrl ? (
+                      <Image
+                        src={previewUrl}
+                        alt="Profile"
+                        width={128}
+                        height={128}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-4xl text-gray-500">
+                        {formData.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </div>
+                  {isEditing && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Change Photo
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        className="block w-full text-sm text-gray-500
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-primary/10 file:text-primary
+                          hover:file:bg-primary/20"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats */}
+                {!isEditing && (
+                  <div className="mt-6 w-full">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Stats</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Points</span>
+                        <span className="font-medium">{profile.points}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Total Earned</span>
+                        <span className="font-medium">${profile.totalEarned.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Available</span>
+                        <span className="font-medium">${profile.availableCash.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Withdrawn</span>
+                        <span className="font-medium">${profile.totalWithdrawn.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Form Fields */}
+              <div className="mt-6 md:mt-0 md:w-2/3 space-y-6">
+                <div>
+                  <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Display Name
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      id="displayName"
+                      name="displayName"
+                      value={formData.displayName}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                      required
+                    />
+                  ) : (
+                    <p className="mt-1 text-gray-900 dark:text-white">{profile.displayName || 'Not set'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Full Name
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                      required
+                    />
+                  ) : (
+                    <p className="mt-1 text-gray-900 dark:text-white">{profile.name || 'Not set'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Email
+                  </label>
+                  <p className="mt-1 text-gray-900 dark:text-white">{profile.email || 'Not set'}</p>
+                </div>
+
+                <div>
+                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Bio
+                  </label>
+                  {isEditing ? (
+                    <textarea
+                      id="bio"
+                      name="bio"
+                      rows={3}
+                      value={formData.bio}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                    />
+                  ) : (
+                    <p className="mt-1 text-gray-900 dark:text-white whitespace-pre-line">
+                      {profile.bio || 'No bio provided'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Role */}
+                <div>
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">Role</span>
+                  <div className="mt-1">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                      {profile.role}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                {isEditing && (
+                  <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(false);
+                        // Reset form to original values
+                        if (profile) {
+                          setFormData({
+                            name: profile.name || '',
+                            email: profile.email || '',
+                            bio: profile.bio || '',
+                            displayName: profile.displayName || '',
+                          });
+                          setPreviewUrl(profile.avatar || profile.image || '');
+                          setAvatarFile(null);
+                        }
+                      }}
+                      className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      disabled={isSaving}
+                    >
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('bio', formData.bio);
+      if (avatarFile) {
+        formDataToSend.append('avatar', avatarFile);
+      }
+
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        const updatedProfile = await response.json();
+        setProfile(updatedProfile);
+        setIsEditing(false);
+        
+        // Update the session with the new name and image
+        await update({
+          ...session,
+          user: {
+            ...session?.user,
+            name: formData.name,
+            image: updatedProfile.avatar || session?.user?.image,
+          },
+        });
+      } else {
+        throw new Error('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEnable2FA = async () => {
+    // Implementation for enabling 2FA would go here
+    router.push('/dashboard/settings/security');
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
+
+  // Error state - profile failed to load
+  if (!profile) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <p className="text-gray-600">Failed to load profile. Please try again.</p>
+      </div>
+    );
+  }
+
+  // Main profile content
+  return (
+    <div className="space-y-6">
+      {/* Profile Header */}
+      <div className="md:flex md:items-center md:justify-between">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+            {isEditing ? 'Edit Profile' : 'My Profile'}
+          </h2>
+        </div>
+        <div className="mt-4 flex md:mt-0 md:ml-4
+        ">
+          {!isEditing ? (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Edit Profile
+            </button>
+          ) : (
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(false);
+                  // Reset form data
+                  setFormData({
+                    name: profile.displayName || '',
+                    email: session?.user?.email || '',
+                    bio: profile.bio || '',
+                  });
+                  setPreviewUrl(profile.avatar || '');
+                }}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {isLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div className="px-4 py-5 sm:px-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">
+            Profile Information
+          </h3>
+          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            Personal details and account information.
+          </p>
+        </div>
+        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <dl className="sm:divide-y sm:divide-gray-200">
+            {isEditing ? (
+              <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt className="text-sm font-medium text-gray-500">
+                  Profile Picture
+                </dt>
+                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                  <div className="flex items-center">
+                    <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-100">
+                      {previewUrl ? (
+                        <img
+                          className="h-full w-full object-cover"
+                          src={previewUrl}
+                          alt="Profile preview"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-gray-200 flex items-center justify-center">
+                          <span className="text-gray-400 text-xl font-medium">
+                            {formData.name?.charAt(0) || 'U'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="ml-4">
+                      <label
+                        htmlFor="avatar-upload"
+                        className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        Change
+                        <input
+                          id="avatar-upload"
+                          name="avatar"
+                          type="file"
+                          className="sr-only"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </dd>
+              </div>
+            ) : (
+              <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt className="text-sm font-medium text-gray-500">
+                  Profile Picture
+                </dt>
+                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                  <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-100">
+                    {profile.avatar ? (
+                      <img
+                        className="h-full w-full object-cover"
+                        src={profile.avatar}
+                        alt={profile.displayName}
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-indigo-100 flex items-center justify-center">
+                        <span className="text-indigo-600 text-xl font-medium">
+                          {profile.displayName?.charAt(0) || 'U'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </dd>
+              </div>
+            )}
+
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Name</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                  />
+                ) : (
+                  profile.displayName || 'Not set'
+                )}
+              </dd>
+            </div>
+
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Email</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                {formData.email}
+              </dd>
+            </div>
+
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Bio</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                {isEditing ? (
+                  <textarea
+                    name="bio"
+                    rows={3}
+                    value={formData.bio}
+                    onChange={handleInputChange}
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    placeholder="Tell us about yourself..."
+                  />
+                ) : (
+                  <p className="whitespace-pre-line">
+                    {profile.bio || 'No bio provided'}
+                  </p>
+                )}
+              </dd>
+            </div>
+
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Account Type</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                  {session?.user?.role === 'CREATOR' ? 'Content Creator' : 'User'}
+                </span>
+              </dd>
+            </div>
+
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Points</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                <div className="flex items-center">
+                  <span className="font-medium">{profile.points}</span>
+                  <span className="ml-2 text-xs text-gray-500">
+                    (≈ ${(profile.points * 0.01).toFixed(2)})
+                  </span>
+                </div>
+              </dd>
+            </div>
+
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">
+                Two-Factor Authentication
+              </dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                <div className="flex items-center">
+                  <span className="text-gray-500 mr-2">
+                    {session?.user?.twoFactorAuth?.isEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <button
+                    onClick={handleEnable2FA}
+                    className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                  >
+                    {session?.user?.twoFactorAuth?.isEnabled ? 'Manage' : 'Enable'}
+                  </button>
+                </div>
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      {!isEditing && (
+        <div className="bg-white shadow sm:rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">
+              Account Actions
+            </h3>
+            <div className="mt-5">
+              <div className="rounded-md bg-yellow-50 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-yellow-800">
+                      Danger Zone
+                    </h3>
+                    <div className="mt-2 text-sm text-yellow-700">
+                      <p>
+                        Deleting your account will permanently remove all of your data, including your profile, content, and earnings.
+                      </p>
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                          onClick={() => {}}
+                        >
+                          Delete Account
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
