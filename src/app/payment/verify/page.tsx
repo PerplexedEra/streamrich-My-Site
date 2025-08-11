@@ -80,7 +80,7 @@ export default function PaymentVerification() {
         {status === 'error' && (
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <Icons.close className="w-8 h-8 text-red-600" />
+              <Icons.x className="w-8 h-8 text-red-600" />
             </div>
             <h1 className="text-2xl font-bold mb-2">Payment Failed</h1>
             <p className="text-gray-600 mb-6">{message}</p>
@@ -93,7 +93,7 @@ export default function PaymentVerification() {
               </Button>
               <Button variant="outline" asChild className="w-full">
                 <Link href="/support">
-                  <Icons.helpCircle className="mr-2 h-4 w-4" />
+                  <Icons.alertCircle className="mr-2 h-4 w-4" />
                   Contact Support
                 </Link>
               </Button>
