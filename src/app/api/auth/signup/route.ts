@@ -5,22 +5,22 @@ import { hash } from 'bcryptjs';
 const prisma = new PrismaClient();
 
 // Type for the signup request body
-type SignupData = {
+interface SignupData {
   name: string;
   email: string;
   password: string;
-  role?: 'USER' | 'CREATOR';
+  role?: 'STREAMER' | 'CREATOR';
 };
 
 // Extend the Prisma client to include the createUserWithPassword function
 const customPrisma = new PrismaClient().$extends({
   model: {
     user: {
-      async createWithPassword({ name, email, password, role = 'USER' }: {
+      async createWithPassword({ name, email, password, role = 'STREAMER' }: {
         name: string;
         email: string;
         password: string;
-        role?: 'USER' | 'CREATOR';
+        role?: 'STREAMER' | 'CREATOR';
       }) {
         const hashedPassword = await hash(password, 12);
         
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password,
-      role: role as 'USER' | 'CREATOR',
+      role: role as 'STREAMER' | 'CREATOR',
     });
 
     console.log('User created successfully, creating profile...');

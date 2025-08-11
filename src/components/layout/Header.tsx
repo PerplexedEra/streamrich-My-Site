@@ -1,5 +1,8 @@
+'use client';
+
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import styled from 'styled-components';
 
 const HeaderContainer = styled.header`
@@ -26,7 +29,12 @@ const HeaderContent = styled.div`
   justify-content: space-between;
 `;
 
-const Logo = styled(Link)`
+const LogoLink = styled(Link)`
+  text-decoration: none;
+  display: flex;
+`;
+
+const Logo = styled.span`
   display: flex;
   align-items: center;
   text-decoration: none;
@@ -54,6 +62,7 @@ const Nav = styled.nav`
 `;
 
 const NavLink = styled(Link)`
+  text-decoration: none;
   color: ${({ theme }) => theme.colors.textPrimary};
   text-decoration: none;
   font-weight: 500;
@@ -253,7 +262,7 @@ const MobileNavLink = styled(Link)`
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const navigate = useNavigate();
+  const router = useRouter();
   
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -264,7 +273,7 @@ const Header: React.FC = () => {
     // Handle search functionality
     const searchInput = document.getElementById('search') as HTMLInputElement;
     if (searchInput && searchInput.value.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchInput.value.trim())}`);
+      router.push(`/signin?q=${encodeURIComponent(searchInput.value.trim())}`);
     }
   };
 
@@ -272,12 +281,12 @@ const Header: React.FC = () => {
     <>
       <HeaderContainer>
         <HeaderContent>
-          <Logo to="/">
+          <LogoLink href="/">
             <span>StreamRich</span>
-          </Logo>
+          </LogoLink>
           
           <Nav>
-            <NavLink to="/">Home</NavLink>
+            <NavLink href="/content">Content</NavLink>
             <NavLink to="/trending">Trending</NavLink>
             <NavLink to="/categories">Categories</NavLink>
             <NavLink to="/earn">Earn</NavLink>
@@ -310,7 +319,7 @@ const Header: React.FC = () => {
                 💬
               </span>
             </ActionButton>
-            <UserAvatar title="My Profile" onClick={() => navigate('/profile/me')}>
+            <UserAvatar title="My Profile" onClick={() => router.push('/profile')}>
               U
             </UserAvatar>
             <MobileMenuButton onClick={toggleMenu}>

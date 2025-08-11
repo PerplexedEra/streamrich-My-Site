@@ -67,10 +67,10 @@ export default function UploadSuccessPage() {
               {content.title}
             </h3>
             <div className="mt-4 flex items-center text-sm text-gray-500 dark:text-gray-400">
-              <Icons.file className="flex-shrink-0 mr-1.5 h-5 w-5" />
+              <Icons.package className="flex-shrink-0 mr-1.5 h-5 w-5" />
               <span>{content.type}</span>
               <span className="mx-2">•</span>
-              <Icons.link className="flex-shrink-0 mr-1.5 h-5 w-5" />
+              <Icons.externalLink className="flex-shrink-0 mr-1.5 h-5 w-5" />
               <a 
                 href={content.url} 
                 target="_blank" 

@@ -14,6 +14,10 @@ const ThemeProvider = dynamic(
   () => import('@/components/providers/theme-provider-new').then((mod) => mod.ThemeProvider),
   { ssr: false }
 );
+
+// Import the StyledComponentsRegistry
+import StyledComponentsRegistry from './lib/registry';
+
 import { SessionProvider } from '@/components/providers/SessionProvider';
 import { PayPalProvider } from '@/components/payment/paypal-provider';
 import { MainHeader } from '@/components/layout/MainHeader';
@@ -79,31 +83,35 @@ export default async function RootLayout({
   
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn(
-        'min-h-screen bg-background font-sans antialiased',
-        fontSans.variable,
-        bebasNeue.variable
-      )}>
-        <SessionProvider session={session}>
-          <CartProvider>
-          <PayPalProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <div className="flex flex-col min-h-screen">
-                <MainHeader />
-                <main className="flex-1">
-                  {children}
-                </main>
-              </div>
-              <Toaster />
-            </ThemeProvider>
-          </PayPalProvider>
-          </CartProvider>
-        </SessionProvider>
+      <body 
+        className={cn(
+          'min-h-screen bg-background font-sans antialiased',
+          fontSans.variable,
+          bebasNeue.variable
+        )}
+      >
+        <StyledComponentsRegistry>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            <SessionProvider session={session}>
+              <PayPalProvider>
+                <CartProvider>
+                  <div className="flex flex-col min-h-screen">
+                    <MainHeader />
+                    <main className="flex-1">
+                      {children}
+                    </main>
+                  </div>
+                  <Toaster />
+                </CartProvider>
+              </PayPalProvider>
+            </SessionProvider>
+          </ThemeProvider>
+        </StyledComponentsRegistry>
       </body>
     </html>
   );

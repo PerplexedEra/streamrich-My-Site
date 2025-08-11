@@ -6,7 +6,6 @@ import prisma from '@/lib/prisma';
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status') || 'PENDING';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     
@@ -21,15 +20,12 @@ export async function GET(req: Request) {
     }
 
     // Get total count for pagination
-    const total = await prisma.content.count({
-      where: { status: status as any }
-    });
+    const total = await prisma.content.count();
 
     // Get paginated content
     const content = await prisma.content.findMany({
-      where: { status: status as any },
       include: {
-        creator: {
+        user: {
           select: {
             id: true,
             name: true,
@@ -37,7 +33,7 @@ export async function GET(req: Request) {
           },
         },
       },
-      orderBy: { submittedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
     });

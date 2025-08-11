@@ -25,13 +25,14 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { 
-      url, 
       title, 
-      description = '', 
+      description, 
+      url, 
       type, 
       creatorName, 
-      duration = '',
-      thumbnail = '',
+      duration, 
+      thumbnail, 
+      platform = 'YOUTUBE', 
       status = 'PENDING'
     } = body;
 
@@ -58,17 +59,20 @@ export async function POST(req: Request) {
         description,
         url,
         type,
-        status,
+        platform, // Add the platform field
         duration,
         thumbnail,
-        creator: {
+        user: {
           connect: { id: session.user.id }
         },
-        // If admin is submitting, auto-approve
-        ...(session.user.role === 'ADMIN' && status === 'APPROVED' ? {
-          approvedAt: new Date(),
-          approvedBy: session.user.id
-        } : {})
+        // If admin is submitting, auto-approve by setting isPublic to true
+        isPublic: session.user.role === 'ADMIN',
+        // Set other default values
+        isFeatured: false,
+        isTopListed: false,
+        views: 0,
+        likes: 0,
+        pointsAwarded: 1
       }
     });
 

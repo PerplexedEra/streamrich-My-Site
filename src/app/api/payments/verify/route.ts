@@ -26,48 +26,63 @@ export async function GET(req: Request) {
 
     const paymentData = verification.data;
     
-    // Update the payment record in the database
-    const updatedPayment = await prisma.payment.update({
-      where: { reference },
-      data: {
-        status: paymentData.status === 'success' ? 'COMPLETED' : 'FAILED',
-        paymentData: JSON.stringify(paymentData),
-        ...(paymentData.status === 'success' && { paidAt: new Date() }),
-      },
+    // First find the transaction by paymentId (which is the reference from PayStack)
+    const transaction = await prisma.transaction.findFirst({
+      where: { paymentId: reference },
       include: {
         user: true,
-        product: true,
       },
     });
 
-    // If payment was successful, create a purchase record
-    if (paymentData.status === 'success' && updatedPayment.status === 'COMPLETED') {
-      await prisma.purchase.create({
-        data: {
-          userId: updatedPayment.userId,
-          productId: updatedPayment.productId,
-          amount: updatedPayment.amount,
-          paymentId: updatedPayment.id,
-        },
-      });
+    if (!transaction) {
+      return NextResponse.json(
+        { error: 'Transaction not found' },
+        { status: 404 }
+      );
+    }
 
-      // Update product purchase count
-      await prisma.product.update({
-        where: { id: updatedPayment.productId },
-        data: {
-          purchaseCount: {
-            increment: 1,
-          },
+    // Now update the transaction using its ID
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: transaction.id },
+      data: {
+        status: paymentData.status === 'success' ? 'COMPLETED' : 'FAILED',
+        ...(paymentData.status === 'success' && { processedAt: new Date() }),
+        metadata: {
+          ...(transaction.metadata as object || {}),
+          paymentData: paymentData,
+          verifiedAt: new Date().toISOString()
         },
-      });
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    // Safely extract productId from metadata if it exists
+    const metadata = updatedTransaction.metadata as Record<string, unknown> | null;
+    const productId = metadata && typeof metadata === 'object' && 'productId' in metadata 
+      ? metadata.productId 
+      : null;
+    
+    // If payment was successful, log the successful transaction
+    if (paymentData.status === 'success' && updatedTransaction.status === 'COMPLETED') {
+      console.log(`Payment successful for transaction ${updatedTransaction.id} by user ${updatedTransaction.userId}`);
+      
+      // Log product ID if available
+      if (productId) {
+        console.log(`Product ID: ${productId}`);
+      }
+      
+      // Additional success logic can be added here if needed
+      // For example, sending confirmation emails, updating user points, etc.
     }
 
     return NextResponse.json({
       success: true,
       status: paymentData.status,
-      payment: {
-        ...updatedPayment,
-        paymentData: JSON.parse(updatedPayment.paymentData || '{}'),
+      transaction: {
+        ...updatedTransaction,
+        metadata: updatedTransaction.metadata || {}
       },
     });
   } catch (error) {

@@ -19,24 +19,15 @@ export async function PATCH(
       );
     }
 
-    const { status, notes } = await req.json();
+    const { notes } = await req.json();
 
-    // Validate status
-    if (!['APPROVED', 'REJECTED'].includes(status)) {
-      return NextResponse.json(
-        { error: 'Invalid status' },
-        { status: 400 }
-      );
-    }
-
-    // Update the content
+    // Update the content with the provided notes
     const content = await prisma.content.update({
       where: { id: params.id },
       data: {
-        status,
-        approvedAt: status === 'APPROVED' ? new Date() : null,
-        approvedBy: status === 'APPROVED' ? session.user.id : null,
-        notes: notes || null,
+        // Add any other fields that need to be updated
+        // For now, we're just updating the notes if provided
+        ...(notes && { notes })
       },
     });
 
@@ -47,7 +38,7 @@ export async function PATCH(
 
     return NextResponse.json({ 
       success: true, 
-      message: `Content ${status.toLowerCase()} successfully`,
+      message: 'Content updated successfully',
       content
     });
 

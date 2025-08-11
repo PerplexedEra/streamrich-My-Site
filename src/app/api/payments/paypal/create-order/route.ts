@@ -35,14 +35,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create a payment record in the database
-    const payment = await prisma.payment.create({
+    // Create a transaction record in the database
+    const transaction = await prisma.transaction.create({
       data: {
         amount,
+        type: 'CONTENT_PROMOTION',
         status: 'PENDING',
         userId: session.user.id,
-        productId,
-        paymentMethod: 'PAYPAL',
+        metadata: {
+          productId,
+          paymentMethod: 'PAYPAL',
+          productName: product.name
+        },
       },
     });
 
@@ -59,7 +63,7 @@ export async function POST(req: Request) {
         intent: 'CAPTURE',
         purchase_units: [
           {
-            reference_id: payment.id,
+            reference_id: transaction.id,
             amount: {
               currency_code: 'USD', // Can be made dynamic
               value: amount.toString(),
@@ -71,7 +75,7 @@ export async function POST(req: Request) {
           brand_name: 'StreamRich',
           landing_page: 'NO_PREFERENCE',
           user_action: 'PAY_NOW',
-          return_url: `${process.env.NEXTAUTH_URL}/payment/verify?paymentId=${payment.id}`,
+          return_url: `${process.env.NEXTAUTH_URL}/payment/verify?transactionId=${transaction.id}`,
           cancel_url: `${process.env.NEXTAUTH_URL}/store?canceled=true`,
         },
       }),
@@ -80,12 +84,16 @@ export async function POST(req: Request) {
     const order = await response.json();
 
     if (!response.ok) {
-      // Update payment status to failed
-      await prisma.payment.update({
-        where: { id: payment.id },
+      // Update transaction status to FAILED
+      await prisma.transaction.update({
+        where: { id: transaction.id },
         data: {
           status: 'FAILED',
-          paymentData: JSON.stringify(order),
+          metadata: {
+            ...(transaction.metadata as object || {}),
+            paymentData: order,
+            error: order.message || 'Failed to create PayPal order'
+          }
         },
       });
 
@@ -95,12 +103,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // Update payment with PayPal order ID
-    await prisma.payment.update({
-      where: { id: payment.id },
+    // Update transaction with PayPal order ID
+    await prisma.transaction.update({
+      where: { id: transaction.id },
       data: {
-        reference: order.id,
-        paymentData: JSON.stringify(order),
+        paymentId: order.id,
+        metadata: {
+          ...(transaction.metadata as object || {}),
+          paymentData: order
+        }
       },
     });
 

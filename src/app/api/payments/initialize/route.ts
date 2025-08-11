@@ -59,15 +59,19 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create a payment record in the database
-    await prisma.payment.create({
+    // Create a transaction record in the database
+    await prisma.transaction.create({
       data: {
         amount,
-        reference,
+        type: 'CONTENT_PROMOTION',
         status: 'PENDING',
         userId: session.user.id,
-        productId,
-        paymentMethod: 'PAYSTACK',
+        paymentId: reference, // Store the PayStack reference as paymentId
+        metadata: {
+          productId,
+          productName: product.name,
+          paymentMethod: 'PAYSTACK'
+        }
       },
     });
 

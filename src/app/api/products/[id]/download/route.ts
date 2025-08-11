@@ -91,7 +91,7 @@ export async function GET(
         where: { id: purchase.id },
         data: {
           downloadCount: { increment: 1 },
-          lastDownloadedAt: new Date(),
+          // lastDownloadedAt field removed as it's not in the model
         },
       });
 

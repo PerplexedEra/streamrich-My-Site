@@ -5,32 +5,38 @@ import { prisma } from '@/lib/prisma';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import type { PrismaClient } from '@prisma/client';
 
 // Helper function to calculate earnings by content type
 async function getEarningsByContentType(userId: string, prisma: PrismaClient) {
-  // This is a simplified example - adjust based on your actual schema
-  const earnings = await prisma.earning.groupBy({
-    by: ['contentType'],
-    where: { userId },
-    _sum: {
-      amount: true,
+  // Get all completed transactions for the user
+  const transactions = await prisma.transaction.findMany({
+    where: { 
+      userId,
+      status: 'COMPLETED',
+      type: { in: ['CONTENT_PROMOTION', 'BONUS'] } // Only include income transactions
     },
+    include: {
+      content: true // Include content to determine type
+    }
   });
 
-  // Default values
+  // Initialize result with default values
   const result = {
     music: 0,
     video: 0,
     other: 0,
   };
 
-  // Map the results
-  earnings.forEach(item => {
-    const type = item.contentType.toLowerCase();
-    if (type in result) {
-      result[type as keyof typeof result] = item._sum.amount?.toNumber() || 0;
+  // Sum up amounts by content type
+  transactions.forEach(tx => {
+    const amount = tx.amount || 0;
+    const contentType = tx.content?.type?.toLowerCase() || 'other';
+    
+    if (contentType in result) {
+      result[contentType as keyof typeof result] += Math.abs(amount); // Use absolute value since amounts might be negative
     } else {
-      result.other += item._sum.amount?.toNumber() || 0;
+      result.other += Math.abs(amount);
     }
   });
 
@@ -39,14 +45,18 @@ async function getEarningsByContentType(userId: string, prisma: PrismaClient) {
 
 // Helper function to get recent payouts
 async function getRecentPayouts(userId: string, prisma: PrismaClient) {
-  return prisma.payout.findMany({
-    where: { userId },
+  return prisma.withdrawal.findMany({
+    where: { 
+      userId,
+      status: { in: ['COMPLETED', 'PENDING', 'PROCESSING'] } // Only show relevant statuses
+    },
     orderBy: { createdAt: 'desc' },
-    take: 5, // Get last 5 payouts
+    take: 5,
     select: {
       id: true,
       amount: true,
       status: true,
+      method: true,
       createdAt: true,
     },
   });
@@ -89,13 +99,20 @@ export async function GET() {
 
     // Get data with individual try-catch blocks to prevent one failed query from breaking everything
     let totalStreams = 0;
-    let totalEarnings = { _sum: { amount: null } };
+    let totalEarnings: { _sum: { amount: number | null } } = { _sum: { amount: 0 } };
     let availableBalance = null;
     let earningsByType = { music: 0, video: 0, other: 0 };
-    let recentPayouts = [];
+    let recentPayouts: Array<{
+      id: string;
+      amount: number;
+      status: string;
+      method: string;
+      createdAt: Date;
+    }> = [];
     
     try {
-      totalStreams = await prisma.stream.count({
+      // Count content views as streams
+      totalStreams = await prisma.contentView.count({
         where: { userId: user.id },
       });
     } catch (error) {
@@ -103,21 +120,28 @@ export async function GET() {
     }
     
     try {
-      totalEarnings = await prisma.earning.aggregate({
-        where: { userId: user.id },
+      // Calculate total earnings from completed transactions
+      totalEarnings = await prisma.transaction.aggregate({
         _sum: { amount: true },
+        where: { 
+          userId: user.id,
+          status: 'COMPLETED',
+          type: { in: ['CONTENT_PROMOTION', 'BONUS'] } // Only count income transactions
+        },
       });
     } catch (error) {
       console.error('Error fetching total earnings:', error);
     }
     
     try {
-      availableBalance = await prisma.wallet.findUnique({
+      const profile = await prisma.profile.findUnique({
         where: { userId: user.id },
-        select: { balance: true },
+        select: { availableCash: true },
       });
+      availableBalance = profile?.availableCash || 0;
     } catch (error) {
       console.error('Error fetching available balance:', error);
+      availableBalance = 0;
     }
     
     try {
@@ -155,8 +179,8 @@ export async function GET() {
       image: user.image,
       stats: {
         totalStreams,
-        totalEarnings: totalEarnings._sum.amount?.toNumber() || 0,
-        currentBalance: availableBalance?.balance.toNumber() || 0,
+        totalEarnings: totalEarnings._sum.amount || 0,
+        currentBalance: availableBalance || 0,
         earningsByType: {
           music: earningsByType.music,
           video: earningsByType.video,
@@ -164,7 +188,7 @@ export async function GET() {
         },
         recentPayouts: recentPayouts.map(payout => ({
           id: payout.id,
-          amount: payout.amount.toNumber(),
+          amount: payout.amount,
           date: payout.createdAt.toISOString(),
           status: payout.status.toLowerCase() as 'completed' | 'pending' | 'failed',
         })),

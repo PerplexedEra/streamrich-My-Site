@@ -216,7 +216,7 @@ export async function PUT(request: Request) {
         fileUrl: fileUrl || null,
         fileType: fileType || null,
         fileSize: fileSize ? parseInt(fileSize.toString()) : null,
-        category,
+        category: category as 'BEATS' | 'PRESETS' | 'SOFTWARE' | 'SAMPLE_PACK' | 'MIDI' | 'OTHER',
         inStock: Boolean(inStock),
       },
     });

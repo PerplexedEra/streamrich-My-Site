@@ -24,7 +24,7 @@ export default function AdminUploadPage() {
   if (status === 'loading' || !session || session.user?.role !== 'ADMIN') {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Icons.loader className="h-8 w-8 animate-spin" />
+        <Icons.loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }

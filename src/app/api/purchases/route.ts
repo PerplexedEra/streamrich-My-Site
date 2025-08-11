@@ -27,10 +27,12 @@ export async function POST(request: Request) {
     // Get the user with their account balance
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      include: { account: true },
+      include: { 
+        accounts: true, // Changed from 'account' to 'accounts' to match Prisma schema
+      },
     });
 
-    if (!user || !user.account) {
+    if (!user || !user.accounts || user.accounts.length === 0) {
       return NextResponse.json(
         { error: 'User account not found' },
         { status: 404 }
@@ -68,8 +70,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if user has sufficient balance
-    if (user.account.balance < product.price) {
+    // Get the user's profile to check their available cash
+    const userProfile = await prisma.profile.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!userProfile) {
+      return NextResponse.json(
+        { error: 'User profile not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if user has sufficient available cash
+    if (userProfile.availableCash < product.price) {
       return NextResponse.json(
         { error: 'Insufficient balance' },
         { status: 402 }
@@ -78,11 +92,11 @@ export async function POST(request: Request) {
 
     // Start a transaction to ensure data consistency
     const result = await prisma.$transaction(async (prisma) => {
-      // Deduct the price from user's account
-      const updatedAccount = await prisma.account.update({
-        where: { id: user.account.id },
+      // Deduct the price from user's available cash in their profile
+      await prisma.profile.update({
+        where: { userId: user.id },
         data: {
-          balance: {
+          availableCash: {
             decrement: product.price,
           },
         },
@@ -92,13 +106,21 @@ export async function POST(request: Request) {
       await prisma.transaction.create({
         data: {
           amount: product.price,
-          type: 'PURCHASE',
+          type: 'CONTENT_PROMOTION', // Using CONTENT_PROMOTION as the transaction type
           status: 'COMPLETED',
-          description: `Purchase: ${product.name}`,
-          accountId: user.account.id,
+          userId: user.id, // Using userId since Transaction model relates to User
+          // Description can be stored in metadata if needed
+          metadata: {
+            description: `Purchase: ${product.name}`
+          }
         },
       });
 
+      // Generate a secure download key
+      const downloadKey = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
       // Create the purchase record
       const purchase = await prisma.productPurchase.create({
         data: {
@@ -106,27 +128,28 @@ export async function POST(request: Request) {
           productId: product.id,
           amount: product.price,
           status: 'COMPLETED',
+          downloadKey: downloadKey, // Add the generated download key
           downloadCount: 0,
         },
       });
 
-      // Increment the product's purchase count
+      // Update the product's download count
       await prisma.product.update({
         where: { id: product.id },
         data: {
-          purchaseCount: {
+          downloadCount: {
             increment: 1,
           },
         },
       });
 
-      return { purchase, account: updatedAccount };
+      // Return the purchase details
+      return { purchase };
     });
 
     return NextResponse.json({
       message: 'Purchase completed successfully',
       purchaseId: result.purchase.id,
-      remainingBalance: result.account.balance,
     });
 
   } catch (error) {

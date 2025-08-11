@@ -148,7 +148,7 @@ export default function AdminDashboard() {
   if (status === 'loading' || isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Icons.loader className="mr-2 h-8 w-8 animate-spin" />
+        <Icons.loader2 className="mr-2 h-8 w-8 animate-spin" />
         <span>Loading admin dashboard...</span>
       </div>
     );
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
             <StatCard
               title="Total Users"
               value="1,234"
-              icon={<Icons.users className="h-4 w-4" />}
+              icon={<Icons.user className="h-4 w-4" />}
               description="+20.1% from last month"
               trend="up"
               trendValue="+20.1%"
@@ -204,7 +204,7 @@ export default function AdminDashboard() {
             <StatCard
               title="Monthly Revenue"
               value="$8,234.12"
-              icon={<Icons.dollarSign className="h-4 w-4" />}
+              icon={<Icons.creditCard className="h-4 w-4" />}
               description="+8.4% from last month"
               trend="up"
               trendValue="+8.4%"
@@ -242,7 +242,7 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button variant="outline" className="w-full justify-start">
-                  <Icons.plusCircle className="mr-2 h-4 w-4" />
+                  <Icons.plus className="mr-2 h-4 w-4" />
                   Add New User
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
@@ -250,11 +250,11 @@ export default function AdminDashboard() {
                   Manage Roles
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
-                  <Icons.bell className="mr-2 h-4 w-4" />
+                  <Icons.alertCircle className="mr-2 h-4 w-4" />
                   View Notifications
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
-                  <Icons.fileText className="mr-2 h-4 w-4" />
+                  <Icons.edit className="mr-2 h-4 w-4" />
                   Generate Reports
                 </Button>
               </CardContent>
@@ -309,7 +309,7 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="h-[400px] flex items-center justify-center rounded-md border">
                 <div className="text-center">
-                  <Icons.barChart2 className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <Icons.dashboard className="mx-auto h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-2 text-lg font-medium">Analytics Dashboard</h3>
                   <p className="text-sm text-muted-foreground">
                     View detailed analytics and insights about your platform

@@ -5,18 +5,18 @@ import { useEffect, useState } from "react";
 import dynamic from 'next/dynamic';
 
 // Dynamically import client components with SSR disabled
-const ContentPlayer = dynamic(
-  () => import('@/components/content/content-player'),
+const ContentPlayer = dynamic<{ content: any }>(
+  () => import('@/components/content/content-player').then(mod => mod.ContentPlayer),
   { ssr: false }
 );
 
-const ContentDetails = dynamic(
-  () => import('@/components/content/content-details'),
+const ContentDetails = dynamic<{ content: any }>(
+  () => import('@/components/content/content-details').then(mod => mod.ContentDetails),
   { ssr: false }
 );
 
-const RelatedContent = dynamic(
-  () => import('@/components/content/related-content'),
+const RelatedContent = dynamic<{ items: any[] }>(
+  () => import('@/components/content/related-content').then(mod => mod.RelatedContent),
   { ssr: false }
 );
 

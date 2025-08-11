@@ -1,10 +1,12 @@
+// This file is no longer needed with Next.js App Router
+// All routing is now handled by the file-system based router in the /app directory
+// This file can be safely deleted or kept as a legacy component if needed
+
 import React from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
 import styled, { ThemeProvider } from 'styled-components';
 import { theme } from './styles/theme';
 import { GlobalStyles } from './styles/GlobalStyles';
 import Header from './components/layout/Header';
-import AppRouter from './components/layout/AppRouter';
 
 const AppContainer = styled.div`
   display: flex;
@@ -19,18 +21,17 @@ const MainContent = styled.main`
   padding-top: 16px;
 `;
 
-const App: React.FC = () => {
+function App() {
   return (
     <ThemeProvider theme={theme}>
       <GlobalStyles />
-      <Router>
-        <AppContainer>
-          <Header />
-          <MainContent>
-            <AppRouter />
-          </MainContent>
-        </AppContainer>
-      </Router>
+      <AppContainer>
+        <Header />
+        <MainContent>
+          {/* This component is a fallback and should not be used in the new routing system */}
+          <p>This component is part of the legacy routing system and should not be rendered directly.</p>
+        </MainContent>
+      </AppContainer>
     </ThemeProvider>
   );
 };

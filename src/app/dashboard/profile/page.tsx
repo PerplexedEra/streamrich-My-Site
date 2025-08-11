@@ -410,11 +410,11 @@ export default function ProfilePage() {
                       <div className="flex justify-between mb-1">
                         <span className="text-sm font-medium">Music</span>
                         <span className="text-sm font-medium">
-                          ${profile.stats?.earningsByType.music.toFixed(2) || '0.00'}
+                          ${(profile.stats?.earningsByType?.music || 0).toFixed(2)}
                         </span>
                       </div>
                       <Progress 
-                        value={(profile.stats?.earningsByType.music / (profile.stats?.totalEarnings || 1)) * 100} 
+                        value={((profile.stats?.earningsByType?.music || 0) / (profile.stats?.totalEarnings || 1)) * 100} 
                         className="h-2"
                       />
                     </div>
@@ -423,11 +423,11 @@ export default function ProfilePage() {
                       <div className="flex justify-between mb-1">
                         <span className="text-sm font-medium">Video</span>
                         <span className="text-sm font-medium">
-                          ${profile.stats?.earningsByType.video.toFixed(2) || '0.00'}
+                          ${(profile.stats?.earningsByType?.video || 0).toFixed(2)}
                         </span>
                       </div>
                       <Progress 
-                        value={(profile.stats?.earningsByType.video / (profile.stats?.totalEarnings || 1)) * 100} 
+                        value={((profile.stats?.earningsByType?.video || 0) / (profile.stats?.totalEarnings || 1)) * 100} 
                         className="h-2"
                       />
                     </div>
@@ -436,11 +436,11 @@ export default function ProfilePage() {
                       <div className="flex justify-between mb-1">
                         <span className="text-sm font-medium">Other</span>
                         <span className="text-sm font-medium">
-                          ${profile.stats?.earningsByType.other.toFixed(2) || '0.00'}
+                          ${(profile.stats?.earningsByType?.other || 0).toFixed(2)}
                         </span>
                       </div>
                       <Progress 
-                        value={(profile.stats?.earningsByType.other / (profile.stats?.totalEarnings || 1)) * 100} 
+                        value={((profile.stats?.earningsByType?.other || 0) / (profile.stats?.totalEarnings || 1)) * 100} 
                         className="h-2"
                       />
                     </div>

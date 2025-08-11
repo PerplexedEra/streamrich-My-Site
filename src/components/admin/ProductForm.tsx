@@ -22,6 +22,7 @@ interface ProductFormProps {
     inStock: boolean;
   };
   isEditing?: boolean;
+  onSuccess?: () => void;
 }
 
 const CATEGORIES = [

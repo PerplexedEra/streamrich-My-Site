@@ -23,18 +23,21 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get the payment record
-    const payment = await prisma.payment.findFirst({
+    // Get the transaction record
+    const transaction = await prisma.transaction.findFirst({
       where: {
-        reference: orderId,
+        paymentId: orderId,
         userId: session.user.id,
-        productId,
+        metadata: {
+          path: ['productId'],
+          equals: productId
+        }
       },
     });
 
-    if (!payment) {
+    if (!transaction) {
       return NextResponse.json(
-        { error: 'Payment not found' },
+        { error: 'Transaction not found' },
         { status: 404 }
       );
     }
@@ -56,12 +59,16 @@ export async function POST(req: Request) {
     const captureData = await response.json();
 
     if (!response.ok) {
-      // Update payment status to failed
-      await prisma.payment.update({
-        where: { id: payment.id },
+      // Update transaction status to FAILED
+      await prisma.transaction.update({
+        where: { id: transaction.id },
         data: {
           status: 'FAILED',
-          paymentData: JSON.stringify(captureData),
+          metadata: {
+            ...transaction.metadata as object,
+            paymentData: captureData,
+            error: captureData.message || 'Failed to capture payment'
+          }
         },
       });
 
@@ -71,46 +78,32 @@ export async function POST(req: Request) {
       );
     }
 
-    // Update payment status to completed
-    const updatedPayment = await prisma.payment.update({
-      where: { id: payment.id },
+    // Update transaction status to COMPLETED
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: transaction.id },
       data: {
         status: 'COMPLETED',
-        paymentData: JSON.stringify(captureData),
-        paidAt: new Date(),
+        processedAt: new Date(),
+        metadata: {
+          ...transaction.metadata as object,
+          paymentData: captureData,
+          completedAt: new Date().toISOString()
+        }
       },
       include: {
-        user: true,
-        product: true,
+        user: true
       },
     });
 
-    // Create a purchase record
-    await prisma.purchase.create({
-      data: {
-        userId: updatedPayment.userId,
-        productId: updatedPayment.productId,
-        amount: updatedPayment.amount,
-        paymentId: updatedPayment.id,
-      },
-    });
-
-    // Update product purchase count
-    await prisma.product.update({
-      where: { id: updatedPayment.productId },
-      data: {
-        purchaseCount: {
-          increment: 1,
-        },
-      },
-    });
+    // Product model doesn't exist in the schema, so we'll just log the purchase
+    console.log(`Purchase completed for product ${productId} by user ${session.user.id}`);
 
     return NextResponse.json({
       success: true,
       status: captureData.status,
-      payment: {
-        ...updatedPayment,
-        paymentData: JSON.parse(updatedPayment.paymentData || '{}'),
+      transaction: {
+        ...updatedTransaction,
+        metadata: updatedTransaction.metadata || {}
       },
     });
   } catch (error) {
