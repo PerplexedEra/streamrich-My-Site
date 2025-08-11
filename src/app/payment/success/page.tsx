@@ -44,7 +44,7 @@ export default function PaymentSuccessPage() {
           
           <Button variant="outline" asChild className="w-full">
             <a href="/profile/purchases">
-              <Icons.history className="mr-2 h-4 w-4" />
+              <Icons.package className="mr-2 h-4 w-4" />
               View Purchase History
             </a>
           </Button>
