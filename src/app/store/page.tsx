@@ -129,13 +129,10 @@ export default function StorePage() {
                     size="sm" 
                     onClick={() => {
                       addItem({
-                        id: product.id,
                         productId: product.id,
                         name: product.name,
                         price: product.price,
-                        quantity: 1,
-                        image: product.imageUrl,
-                        fileUrl: product.fileUrl
+                        image: product.imageUrl
                       });
                       toast({
                         title: 'Added to cart',
