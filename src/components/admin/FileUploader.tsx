@@ -207,7 +207,7 @@ export function FileUploader() {
             variant={activeTab === 'browse' ? 'default' : 'outline'}
             onClick={() => setActiveTab('browse')}
           >
-            <Icons.folder className="mr-2 h-4 w-4" />
+            <Icons.package className="mr-2 h-4 w-4" />
             Browse Files
           </Button>
         </div>
