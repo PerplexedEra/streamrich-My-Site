@@ -344,7 +344,7 @@ export function FileUploader() {
                               />
                             ) : (
                               <div className="flex h-full items-center justify-center">
-                                <Icons.image className="h-6 w-6 text-muted-foreground" />
+                                <FileTextIcon className="h-6 w-6 text-muted-foreground" />
                               </div>
                             )}
                           </div>
