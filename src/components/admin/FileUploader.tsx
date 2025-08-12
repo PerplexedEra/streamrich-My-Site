@@ -244,7 +244,7 @@ export function FileUploader() {
                   size="sm"
                   onClick={() => document.getElementById('file-upload')?.click()}
                 >
-                  <Icons.folder className="mr-2 h-4 w-4" />
+                  <Icons.package className="mr-2 h-4 w-4" />
                   Add More
                 </Button>
               </div>
@@ -267,7 +267,7 @@ export function FileUploader() {
                             />
                           ) : (
                             <div className="flex h-full items-center justify-center">
-                              <Icons.fileText className="h-8 w-8 text-muted-foreground" />
+                              <Icons.file className="h-8 w-8 text-muted-foreground" />
                             </div>
                           )}
                         </div>
