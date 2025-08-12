@@ -19,8 +19,14 @@ declare module "next-auth" {
       balance?: number;
       twoFactorAuth?: boolean;
     };
+    accessToken?: string;
   }
+  
   interface User {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
     role: UserRole;
     points?: number;
     balance?: number;
@@ -31,10 +37,14 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
     role: UserRole;
     points?: number;
     balance?: number;
     twoFactorAuth?: boolean;
+    accessToken?: string;
   }
 }
 
@@ -111,7 +121,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       // Handle OAuth sign-in
-      if (account?.provider === 'google') {
+      if (account?.provider === 'google' && user.email) {
         // Check if user exists in your database
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email },
@@ -122,12 +132,13 @@ export const authOptions: NextAuthOptions = {
           await prisma.user.create({
             data: {
               email: user.email,
-              name: user.name,
-              image: user.image,
+              name: user.name || user.email.split('@')[0],
+              image: user.image || null,
               role: 'STREAMER', // Default role for new users
+              twoFactorAuth: false, // Default to false
               profile: {
                 create: {
-                  displayName: user.name,
+                  displayName: user.name || user.email.split('@')[0],
                   points: 0,
                   availableCash: 0,
                   totalEarned: 0,
@@ -182,6 +193,9 @@ export const authOptions: NextAuthOptions = {
             token.points = dbUser.profile.points;
             token.balance = dbUser.profile.availableCash;
           }
+          
+          // Ensure twoFactorAuth is a boolean
+          token.twoFactorAuth = Boolean(dbUser.twoFactorAuth);
         }
       }
 
@@ -190,9 +204,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/signin",
-    signUp: "/auth/signup",
     error: "/auth/error",
-    newUser: "/auth/complete-profile", // Redirect to complete profile after signup
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
@@ -204,20 +216,22 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
-      role?: string;
+      role: UserRole;
+      points?: number;
+      balance?: number;
       twoFactorAuth?: boolean;
     };
+    accessToken?: string;
   }
-  interface User {
-    role?: string;
-    twoFactorAuth?: boolean;
-  }
-}
 
-declare module "next-auth/jwt" {
-  interface JWT {
+  interface User {
     id: string;
-    role?: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    role: UserRole;
+    points?: number;
+    balance?: number;
     twoFactorAuth?: boolean;
   }
 }
