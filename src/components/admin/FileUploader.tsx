@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useRouter } from 'next/navigation';
-import { FileText as FileTextIcon } from 'lucide-react';
+import { FileText as FileTextIcon, X as XIcon } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -287,7 +287,7 @@ export function FileUploader() {
                             removeFile(index);
                           }}
                         >
-                          <Icons.x className="h-4 w-4" />
+                          <XIcon className="h-4 w-4" />
                           <span className="sr-only">Remove</span>
                         </Button>
                       </div>
