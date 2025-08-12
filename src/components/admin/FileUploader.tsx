@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useRouter } from 'next/navigation';
+import { FileText as FileTextIcon } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
