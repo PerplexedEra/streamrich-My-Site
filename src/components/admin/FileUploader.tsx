@@ -244,7 +244,7 @@ export function FileUploader() {
                   size="sm"
                   onClick={() => document.getElementById('file-upload')?.click()}
                 >
-                  <Icons.plus className="mr-2 h-4 w-4" />
+                  <Icons.folder className="mr-2 h-4 w-4" />
                   Add More
                 </Button>
               </div>
@@ -442,9 +442,7 @@ export function FileUploader() {
                 >
                   {isUploading ? (
                     <>
-                      <Icons.loader className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
+                    {isLoading ? <Icons.loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icons.uploadCloud className="mr-2 h-4 w-4" />}                 </>
                   ) : (
                     `Upload ${files.length} file${files.length !== 1 ? 's' : ''}`
                   )}
