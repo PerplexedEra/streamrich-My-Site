@@ -244,7 +244,7 @@ export function FileUploader() {
                   size="sm"
                   onClick={() => document.getElementById('file-upload')?.click()}
                 >
-                  <Icons.package className="mr-2 h-4 w-4" />
+                  <Icons.folder className="mr-2 h-4 w-4" />
                   Add More
                 </Button>
               </div>
@@ -267,7 +267,7 @@ export function FileUploader() {
                             />
                           ) : (
                             <div className="flex h-full items-center justify-center">
-                              <Icons.file className="h-8 w-8 text-muted-foreground" />
+                              <Icons.fileText className="h-8 w-8 text-muted-foreground" />
                             </div>
                           )}
                         </div>
@@ -442,7 +442,9 @@ export function FileUploader() {
                 >
                   {isUploading ? (
                     <>
-                    {isLoading ? <Icons.loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icons.uploadCloud className="mr-2 h-4 w-4" />}                 </>
+                      <Icons.loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
                   ) : (
                     `Upload ${files.length} file${files.length !== 1 ? 's' : ''}`
                   )}
@@ -454,7 +456,7 @@ export function FileUploader() {
       ) : (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
           <div className="flex flex-col items-center justify-center space-y-4 py-12">
-            <Icons.folderOpen className="h-12 w-12 text-muted-foreground" />
+            <Icons.folder className="h-12 w-12 text-muted-foreground" />
             <h3 className="text-lg font-medium">No files uploaded yet</h3>
             <p className="text-sm text-muted-foreground">
               Your uploaded files will appear here
